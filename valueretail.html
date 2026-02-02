@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    />
+
+    <title>Las Rozas Village – CMP Demo</title>
+    <meta name="description" content="Demo page with OneTrust CMP on top of a fake site background." />
+
+    <!-- OneTrust Cookies Consent Notice start for www.valueretail.com -->
+    <script
+      src="https://cdn.cookielaw.org/scripttemplates/otSDKStub.js"
+      type="text/javascript"
+      charset="UTF-8"
+      data-domain-script="019c09a0-56db-73a2-8935-da150c29b863"
+    ></script>
+    <script type="text/javascript">
+      // OneTrust will call this once it’s ready; keep it defined even if empty.
+      function OptanonWrapper() { }
+      // Optional: expose a safe opener for the preference center
+      window.openCookiePreferences = function () {
+        if (typeof Optanon !== "undefined" && typeof Optanon.ToggleInfoDisplay === "function") {
+          Optanon.ToggleInfoDisplay(); // open the Preference Center
+        } else {
+          alert("Cookie preference center isn't ready yet. Try again in a moment.");
+        }
+      };
+    </script>
+    <!-- OneTrust Cookies Consent Notice end for www.valueretail.com -->
+
+    <style>
+      :root {
+        --overlay-bg: rgba(0, 0, 0, 0.35);
+        --card-bg: rgba(255, 255, 255, 0.92);
+        --text-color: #0f172a;
+        --accent: #0a84ff;
+      }
+
+      /* Reset-ish */
+      * { box-sizing: border-box; }
+      html, body {
+        height: 100%;
+        margin: 0;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        color: var(--text-color);
+      }
+
+      /* Full-bleed background image */
+      .hero-bg {
+        position: fixed;
+        inset: 0;
+        background: url("./lasrozasvillage.png") center center / cover no-repeat;
+        z-index: -2;
+      }
+      /* A subtle dark overlay for legibility */
+      .hero-overlay {
+        position: fixed;
+        inset: 0;
+        background: var(--overlay-bg);
+        z-index: -1;
+      }
+
+      /* Demo site content */
+      .site-shell {
+        min-height: 100%;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+      }
+
+      header, footer {
+        backdrop-filter: saturate(120%) blur(2px);
+        background: rgba(255, 255, 255, 0.65);
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 24px;
+      }
+
+      header .brand {
+        font-weight: 700;
+        letter-spacing: 0.3px;
+      }
+
+      header nav a {
+        color: #111827;
+        text-decoration: none;
+        margin-left: 16px;
+        padding: 6px 10px;
+        border-radius: 8px;
+      }
+      header nav a:hover { background: rgba(0,0,0,0.06); }
+
+      main {
+        display: grid;
+        place-items: center;
+        padding: 40px 16px;
+      }
+
+      .card {
+        width: min(720px, 96vw);
+        background: var(--card-bg);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow:
+          0 10px 30px rgba(0,0,0,0.18),
+          0 1px 2px rgba(0,0,0,0.08);
+      }
+
+      .card h1 {
+        margin: 0 0 8px;
+        font-size: clamp(22px, 2.6vw, 34px);
+      }
+      .card p.lead {
+        margin: 0 0 16px;
+        color: #334155;
+      }
+
+      .actions {
+        margin-top: 18px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        appearance: none;
+        border: 1px solid #cbd5e1;
+        background: white;
+        color: #0b1220;
+        padding: 10px 14px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .btn:hover { border-color: #94a3b8; }
+
+      .btn-primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
+      }
+      .btn-primary:hover {
+        filter: brightness(0.95);
+      }
+
+      footer {
+        padding: 14px 24px;
+        font-size: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      /* Ensure OneTrust layers appear above the page content */
+      #onetrust-banner-sdk,
+      #onetrust-consent-sdk {
+        z-index: 2147483647 !important; /* max to avoid conflicts in demos */
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="hero-bg" aria-hidden="true"></div>
+    <div class="hero-overlay" aria-hidden="true"></div>
+
+    <div class="site-shell">
+      <header role="banner">
+        <div class="brand">Las Rozas Village (Demo)</div>
+        <nav aria-label="Primary">
+          <a href="#" aria-current="page">Home</a>
+          <a href="#">Boutiques</a>
+          <a href="#">Dining</a>
+          <a href="#">Plan your visit</a>
+        </nav>
+      </header>
+
+      <main role="main">
+        <section class="card" aria-label="Welcome">
+          <h1>Experience Open‑Air Luxury</h1>
+          <p class="lead">
+            This is a demo page using the production OneTrust CMP.
+            The background simulates <em>lasrozasvillage.png</em>.
+          </p>
+
+          <div class="actions">
+            <button class="btn-primary btn" onclick="openCookiePreferences()">
+              Manage Cookies
+            </button>
+            <button class="btn" onclick="location.reload()">
+              Reload page
+            </button>
+          </div>
+
+          <p style="margin-top: 14px; color:#475569; font-size:14px;">
+            Tip: Use “Manage Cookies” to re-open the OneTrust preference center during the demo.
+          </p>
+        </section>
+      </main>
+
+      <footer role="contentinfo">
+        <span>© 2026 Value Retail – Demo only</span>
+        <button class="btn" onclick="openCookiePreferences()">Cookie Preferences</button>
+      </footer>
+    </div>
+  </body>
+</html>
