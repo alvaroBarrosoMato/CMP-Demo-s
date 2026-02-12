@@ -1,3 +1,97 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+OUTPUT="index.html"
+
+# --- Configure exclusions here ---
+EXCLUDES=(
+  "./.git/*"
+  "./node_modules/*"
+  "./dist/*"
+  "./build/*"
+  "./.github/*"
+  "./vendor/*"
+)
+
+# HTML escape for safe injection into index.html
+html_escape() {
+  local s="${1:-}"
+  s="${s//&/&amp;}"
+  s="${s//</&lt;}"
+  s="${s//>/&gt;}"
+  s="${s//\"/&quot;}"
+  s="${s//\'/&#39;}"
+  printf '%s' "$s"
+}
+
+# Extract description from the first commented line that starts with "Description:"
+# Expected format near top of file: <!-- Description: something here -->
+extract_description() {
+  local file="$1"
+  local line desc
+  # look at the first 40 lines only; grab first match
+  line="$(
+    awk 'NR<=40 { print } NR==40 { exit }' "$file" \
+    | tr -d '\r' \
+    | grep -m1 -E '<!--[[:space:]]*Description:[[:space:]]*' \
+    || true
+  )"
+
+  if [[ -z "$line" ]]; then
+    printf '—'
+    return 0
+  fi
+
+  desc="${line#*Description:}"
+  desc="${desc%-->*}"
+  desc="$(printf '%s' "$desc" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+  [[ -z "$desc" ]] && desc="—"
+  printf '%s' "$desc"
+}
+
+# Determine "Last Update" from git history (last commit on current branch)
+# Date: ISO 8601, Author: commit author name
+LAST_UPDATE_DATETIME="$(git log -1 --format=%aI 2>/dev/null || true)"
+LAST_UPDATE_USER="$(git log -1 --format=%an 2>/dev/null || true)"
+if [[ -z "${LAST_UPDATE_DATETIME}" ]]; then
+  # fallback if not a git repo (rare)
+  LAST_UPDATE_DATETIME="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+fi
+if [[ -z "${LAST_UPDATE_USER}" ]]; then
+  LAST_UPDATE_USER="unknown"
+fi
+
+# Collect html files (exclude index.html itself + excluded paths)
+FIND_CMD=(find . -type f -name "*.html" ! -path "./index.html")
+for p in "${EXCLUDES[@]}"; do
+  FIND_CMD+=(! -path "$p")
+done
+
+mapfile -t FILES < <("${FIND_CMD[@]}" | sort | sed 's|^\./||')
+
+COUNT="${#FILES[@]}"
+
+# Group by directory
+declare -A FILE_GROUPS
+declare -a ORDERED_GROUPS
+
+for f in "${FILES[@]}"; do
+  dir="$(dirname "$f")"
+  base="$(basename "$f")"
+  [[ "$dir" == "." ]] && dir="(root)"
+
+  if [[ -z "${FILE_GROUPS[$dir]+x}" ]]; then
+    FILE_GROUPS[$dir]=""
+    ORDERED_GROUPS+=("$dir")
+  fi
+
+  desc="$(extract_description "$f")"
+  # store: fullpath<TAB>basename<TAB>description
+  FILE_GROUPS[$dir]+="${f}"$'\t'"${base}"$'\t'"${desc}"$'\n'
+done
+
+# --- Write HTML ---
+cat > "$OUTPUT" <<HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -368,8 +462,8 @@
         <div>
           <h1>UCPM Banners Library</h1>
           <div class="sub">
-            <span class="pill"><span class="dot"></span><strong>5</strong> file(s)</span>
-            <span class="pill">Last Update: <span class="mono">2026-02-12T16:32:32+01:00</span> <span class="mono">(alvaroBarrosoMato)</span></span>
+            <span class="pill"><span class="dot"></span><strong>${COUNT}</strong> file(s)</span>
+            <span class="pill">Last Update: <span class="mono">${LAST_UPDATE_DATETIME}</span> <span class="mono">(${LAST_UPDATE_USER})</span></span>
           </div>
         </div>
 
@@ -386,13 +480,25 @@
         </div>
       </div>
     </div>
-    <section class="section" data-folder="demo">
+HTML
+
+if [[ "$COUNT" -eq 0 ]]; then
+  cat >> "$OUTPUT" <<'HTML'
+    <div class="empty">No <span class="badge">*.html</span> files found (after exclusions).</div>
+HTML
+else
+  for group in "${ORDERED_GROUPS[@]}"; do
+    group_count="$(printf "%s" "${FILE_GROUPS[$group]}" | grep -c $'\t' || true)"
+    esc_group="$(html_escape "$group")"
+
+    cat >> "$OUTPUT" <<HTML
+    <section class="section" data-folder="${esc_group}">
       <div class="section-head">
         <div class="folder">
           <span class="dot"></span>
-          <code title="demo">demo</code>
+          <code title="${esc_group}">${esc_group}</code>
         </div>
-        <div class="count">5 item(s)</div>
+        <div class="count">${group_count} item(s)</div>
       </div>
 
       <div class="table-wrap">
@@ -405,70 +511,41 @@
             </tr>
           </thead>
           <tbody>
-            <tr data-file="demo/Copy.html" data-desc="—" data-folder="demo">
+HTML
+
+    while IFS=$'\t' read -r full base desc; do
+      [[ -z "${full:-}" ]] && continue
+
+      esc_full="$(html_escape "$full")"
+      esc_base="$(html_escape "$base")"
+      esc_desc="$(html_escape "${desc:-—}")"
+
+      cat >> "$OUTPUT" <<HTML
+            <tr data-file="${esc_full}" data-desc="${esc_desc}" data-folder="${esc_group}">
               <td data-label="Banner">
                 <span class="badge">HTML</span>
-                <span class="name">Copy.html</span>
+                <span class="name">${esc_base}</span>
               </td>
               <td data-label="Description">
-                <div class="desc">—</div>
+                <div class="desc">${esc_desc}</div>
               </td>
               <td class="open" data-label="Open">
-                <a href="demo/Copy.html" title="Open">Open ↗</a>
+                <a href="${esc_full}" title="Open">Open ↗</a>
               </td>
             </tr>
-            <tr data-file="demo/EmbeddedCollectionPointResilianceTest.html" data-desc="Resiliance test for 2 step UCPM Embedded form (you can deactivate the collection point simulating a service disruption and we show a coded consent form instead)" data-folder="demo">
-              <td data-label="Banner">
-                <span class="badge">HTML</span>
-                <span class="name">EmbeddedCollectionPointResilianceTest.html</span>
-              </td>
-              <td data-label="Description">
-                <div class="desc">Resiliance test for 2 step UCPM Embedded form (you can deactivate the collection point simulating a service disruption and we show a coded consent form instead)</div>
-              </td>
-              <td class="open" data-label="Open">
-                <a href="demo/EmbeddedCollectionPointResilianceTest.html" title="Open">Open ↗</a>
-              </td>
-            </tr>
-            <tr data-file="demo/EmbeddedCollectionStandard.html" data-desc="2 step UCPM Consent Embedded Collection Point with only the consent rules applying, email passed as a hidden variable" data-folder="demo">
-              <td data-label="Banner">
-                <span class="badge">HTML</span>
-                <span class="name">EmbeddedCollectionStandard.html</span>
-              </td>
-              <td data-label="Description">
-                <div class="desc">2 step UCPM Consent Embedded Collection Point with only the consent rules applying, email passed as a hidden variable</div>
-              </td>
-              <td class="open" data-label="Open">
-                <a href="demo/EmbeddedCollectionStandard.html" title="Open">Open ↗</a>
-              </td>
-            </tr>
-            <tr data-file="demo/Iberia.html" data-desc="Single-file demo page with an Iberia/Stripe-style checkout; Consent is hidden in a second tab next to payment and loads the OneTrust UCPM Embedded Web Form manually into a container under the price breakdown." data-folder="demo">
-              <td data-label="Banner">
-                <span class="badge">HTML</span>
-                <span class="name">Iberia.html</span>
-              </td>
-              <td data-label="Description">
-                <div class="desc">Single-file demo page with an Iberia/Stripe-style checkout; Consent is hidden in a second tab next to payment and loads the OneTrust UCPM Embedded Web Form manually into a container under the price breakdown.</div>
-              </td>
-              <td class="open" data-label="Open">
-                <a href="demo/Iberia.html" title="Open">Open ↗</a>
-              </td>
-            </tr>
-            <tr data-file="demo/anothercopy.html" data-desc="—" data-folder="demo">
-              <td data-label="Banner">
-                <span class="badge">HTML</span>
-                <span class="name">anothercopy.html</span>
-              </td>
-              <td data-label="Description">
-                <div class="desc">—</div>
-              </td>
-              <td class="open" data-label="Open">
-                <a href="demo/anothercopy.html" title="Open">Open ↗</a>
-              </td>
-            </tr>
+HTML
+    done < <(printf "%s" "${FILE_GROUPS[$group]}")
+
+    cat >> "$OUTPUT" <<'HTML'
           </tbody>
         </table>
       </div>
     </section>
+HTML
+  done
+fi
+
+cat >> "$OUTPUT" <<'HTML'
     <footer>
       <span>Tip: Use search to filter by description, filename, folder, or path.</span>
       <span class="mono">index.html</span>
@@ -538,3 +615,4 @@
   </script>
 </body>
 </html>
+HTML
